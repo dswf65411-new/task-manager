@@ -56,6 +56,7 @@ Claude Code 內打 `/task-manager-check` 或「看目前任務」，列出**本 
 - 改時區：`tracker.py` 的 `TZ8`（目前 +08）。
 
 ## 行為注意
+- **不抓背景 subagent / workflow 的工作**：hook 刻意過濾 `isSidechain`，所以背景 agent（Task/workflow）內部做的事看不到、不會自動記。若 subagent 做了實質工作（如跑實驗、改檔），**請在主線對話明講做了什麼**，hook 才抓得到；或日後啟用 SubagentStop 捕捉（見下方候選）。
 - 每個 Stop 觸發一次（背景、不阻塞；首呼 ~10s、之後 ~2–4s）。
 - API key **只看 env**（hook 是 Claude Code 子程序、自動繼承其環境變數）；env 沒有則 `worker.log` 記明確錯誤，不會無聲失敗。
 - 已在跑的 session 想掛上：`Ctrl+D` 退出再 `claude --resume`（開新 process 重讀設定、接回 context）。
