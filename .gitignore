@@ -1,0 +1,11 @@
+# runtime / 各機本地產物，不入庫
+worker.log
+__pycache__/
+*.pyc
+*.bak.*
+.seq
+state.json
+ops.jsonl
+active/
+archive/
+BOARD.md
