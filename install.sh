@@ -35,13 +35,11 @@ else:
     print("✅ Stop hook 已存在（略過）")
 PY
 
-# 4) API key 檢查
+# 4) API key 檢查（只看 env；hook 為 Claude Code 子程序會繼承）
 if [ -n "$DEEPSEEK_API_KEY" ]; then
-  echo "✅ DEEPSEEK_API_KEY 在環境中"
-elif grep -q 'DEEPSEEK_API_KEY=' "$HOME/.zshrc" 2>/dev/null; then
-  echo "✅ DEEPSEEK_API_KEY 在 ~/.zshrc（hook 會自動撈）"
+  echo "✅ DEEPSEEK_API_KEY 在 env 中"
 else
-  echo "⚠️  找不到 DEEPSEEK_API_KEY！請在 ~/.zshrc 加：export DEEPSEEK_API_KEY=\"sk-...\""
+  echo "⚠️  env 沒有 DEEPSEEK_API_KEY！請在你啟動 claude 的 shell 設定（例 ~/.zshrc 加 export DEEPSEEK_API_KEY=\"sk-...\"），重開終端再啟動 claude。"
 fi
 
 # 5) 煙霧測試
