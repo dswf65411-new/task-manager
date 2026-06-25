@@ -1,5 +1,15 @@
 # task-manager
 
+## 安裝（其他機器一鍵）
+```bash
+git clone https://github.com/dswf65411-new/task-manager.git ~/.claude/hooks/task-manager
+bash ~/.claude/hooks/task-manager/install.sh
+```
+前提：目標機 `~/.zshrc` 有 `export DEEPSEEK_API_KEY="sk-..."`、已裝 `python3`（只用 stdlib）。
+裝完重開 `claude` session 即自動生效，每輪對話自動寫入 `~/task-manager/<session名>-<id>/`。
+
+---
+
 Claude Code **Stop hook**：每輪「使用者說完＋AI 回完」後，背景讀取本 session 最新一輪純對話
 （只取 user/assistant 的 text，跳過 tool 輸出），用 **DeepSeek V4 Flash (effort high)** 判斷要對
 任務／問題清單做哪些變化，由 Python deterministically 套用到 per-item JSON。
