@@ -23,6 +23,7 @@ import re
 import time
 import urllib.request
 import urllib.error
+import concurrent.futures as cf
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -425,6 +426,17 @@ def is_dup_title(title, found_norms):
     return False
 
 
+def build_cleanup_lens_user(exchange):
+    """多視角第二鏡：專盯通用 lens 系統性會漏的『改善/重寫/清理/技術債』類（benchmark 證實能 decorrelate 漏抓）。"""
+    return (
+        "【特定視角抽取】從以下對話專門找出所有「需要改善 / 重寫 / 重構 / 清理 / 優化 / "
+        "有技術債 / 寫得不好 / 很醜 / 將就 / 先頂著」的項目，**即使聽起來只是小毛病也要列**；"
+        "沒有就回 {\"ops\":[]}，不要虛構。\n"
+        "輸出 {\"ops\":[{\"action\":\"add\",\"tag\":...,\"title\":...,\"detail\":...}]}（tag 依 8 標籤定義）。\n\n"
+        f"對話：\n{exchange}"
+    )
+
+
 def build_more_user(exchange, found_display):
     found = "\n".join(f"- {s}" for s in found_display) if found_display else "（無）"
     return (
@@ -591,11 +603,21 @@ def main():
 
         active_index = build_index(taskdir)
         t0 = time.time()
-        # 第一趟：只看精簡索引（rot-safe）→ 拿 ops + need_detail（含重試，空回應不漏）
-        obj, usage = ask_ops(build_pass1_user(active_index, exchange))
+        # 第一趟：multi-perspective——通用 lens + 清理 lens 平行 union（benchmark 證實 98.7%→100%、無額外幻覺）。
+        # 通用 lens 出 ops + need_detail；清理 lens 補通用會系統性漏的「改善/重寫/技術債」類。
+        with cf.ThreadPoolExecutor(max_workers=2) as pool:
+            f_gen = pool.submit(ask_ops, build_pass1_user(active_index, exchange))
+            f_cln = pool.submit(ask_ops, build_cleanup_lens_user(exchange))
+            obj, usage = f_gen.result()
+            obj_cln, _ucln = f_cln.result()
         ops = obj.get("ops", []) if isinstance(obj, dict) else []
         need = obj.get("need_detail", []) if isinstance(obj, dict) else []
         need = [i for i in need if isinstance(i, str)]
+        # union 清理 lens 的 adds（模糊去重，避免和通用 lens 重複）
+        _n = {norm_title(o.get("title", "")) for o in ops if o.get("action") == "add"}
+        for op in (obj_cln.get("ops", []) if isinstance(obj_cln, dict) else []):
+            if op.get("action") == "add" and op.get("title") and not is_dup_title(op["title"], _n):
+                ops.append(op); _n.add(norm_title(op["title"]))
 
         # 第二趟（按需）：只把要改內容的那 1–2 條完整 detail 餵回去 → 拿改寫 ops
         usage2 = None

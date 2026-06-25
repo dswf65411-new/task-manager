@@ -1,0 +1,137 @@
+[
+  {
+    "id": "multi_dense",
+    "desc": "一句塞7個任務（premature EOS / instance compression 壓力）",
+    "exchange": "[使用者] 重構付款模組。登入有時候會卡住不知道為什麼。要不要導入 Redis 我還在猶豫。\n[AI] 好。config 我先 hardcode 頂著之後再改。測試覆蓋率有點低先擱著等付款穩。錯誤處理現在寫得有點隨便。權限檢查那邊我跳過沒做先 mock 掉。",
+    "expected": [
+      {"name": "重構付款模組", "keys": ["重構付款", "付款模組"]},
+      {"name": "登入卡住bug", "keys": ["登入卡", "登入有時", "登入偶"]},
+      {"name": "Redis決策", "keys": ["redis"]},
+      {"name": "config hardcode workaround", "keys": ["hardcode", "寫死config", "config先"]},
+      {"name": "補測試覆蓋率", "keys": ["測試覆蓋", "覆蓋率"]},
+      {"name": "改善錯誤處理", "keys": ["錯誤處理"]},
+      {"name": "權限檢查mock", "keys": ["權限"]}
+    ]
+  },
+  {
+    "id": "implicit",
+    "desc": "全隱性（hedge 用語，無明顯動詞）",
+    "exchange": "[使用者] 這個函式有點長，之後可以拆一下。對了那個 API 我直接寫死 endpoint 了。我不太確定要用 PostgreSQL 還是 MySQL。\n[AI] 收到。",
+    "expected": [
+      {"name": "拆長函式", "keys": ["拆", "函式"]},
+      {"name": "寫死endpoint workaround", "keys": ["endpoint", "寫死"]},
+      {"name": "DB選型question", "keys": ["postgres", "mysql", "資料庫", "db"]}
+    ]
+  },
+  {
+    "id": "long_middle",
+    "desc": "長段落，任務散落首中尾（lost in the middle）",
+    "exchange": "[使用者] 先講一下背景，我們這個專案最近要上線了所以有些事要處理。第一個是登入頁的 RWD 在手機上跑版要修。然後中間有一堆雜事我就不細講了反正都是小事。喔對了資料庫遷移腳本還沒寫這個蠻重要的。再來就是一些文件要補。最後測試環境的 CI 一直 fail 要查一下為什麼。\n[AI] 了解，我記下來。",
+    "expected": [
+      {"name": "修登入RWD跑版", "keys": ["rwd", "跑版", "手機"]},
+      {"name": "寫資料庫遷移腳本", "keys": ["遷移", "migration"]},
+      {"name": "補文件", "keys": ["文件"]},
+      {"name": "查CI fail", "keys": ["ci"]}
+    ]
+  },
+  {
+    "id": "bug_heavy",
+    "desc": "多個 bug/error（issue 召回）",
+    "exchange": "[使用者] 跑 pytest 掛了 3 個 TypeError。另外登出按鈕點了沒反應。還有上傳大檔會 timeout。\n[AI] 我來查這幾個。",
+    "expected": [
+      {"name": "pytest TypeError", "keys": ["pytest", "typeerror"]},
+      {"name": "登出按鈕無反應", "keys": ["登出"]},
+      {"name": "上傳大檔timeout", "keys": ["上傳", "timeout"]}
+    ]
+  },
+  {
+    "id": "compound_decompose",
+    "desc": "一個複合任務該拆成多個原子任務（decomposition）",
+    "exchange": "[使用者] 把使用者模組重構一下：拆 service 層、加 DTO、補單元測試這三件\n[AI] 好，我分三步做。",
+    "expected": [
+      {"name": "拆service層", "keys": ["service"]},
+      {"name": "加DTO", "keys": ["dto"]},
+      {"name": "補單元測試", "keys": ["單元測試", "測試"]}
+    ]
+  },
+  {
+    "id": "deferral_mix",
+    "desc": "backlog + todo 混合",
+    "exchange": "[使用者] 監控那塊之後再說，先把核心跑通。核心這邊權限模組還沒寫。\n[AI] 好，先弄核心權限。",
+    "expected": [
+      {"name": "監控backlog", "keys": ["監控"]},
+      {"name": "權限模組todo", "keys": ["權限"]}
+    ]
+  },
+  {
+    "id": "workaround_heavy",
+    "desc": "多個 workaround",
+    "exchange": "[使用者] DB 連線我先用全域變數 hack 過去。快取也是先用記憶體頂著等之後接 Redis。\n[AI] 了解，先這樣。",
+    "expected": [
+      {"name": "DB連線全域變數hack", "keys": ["全域變數", "db連線", "連線"]},
+      {"name": "記憶體快取暫代Redis", "keys": ["記憶體", "快取"]}
+    ]
+  },
+  {
+    "id": "question_heavy",
+    "desc": "多個待決策 question",
+    "exchange": "[使用者] 要用 REST 還是 GraphQL？另外部署要 k8s 還是先 docker compose？這兩個都等你拍板。\n[AI] 好，這兩個等你決定。",
+    "expected": [
+      {"name": "REST或GraphQL決策", "keys": ["rest", "graphql"]},
+      {"name": "部署k8s或compose決策", "keys": ["k8s", "compose", "部署"]}
+    ]
+  },
+  {
+    "id": "simple_one",
+    "desc": "單一任務（precision baseline）",
+    "exchange": "[使用者] 幫我加一個匯出 CSV 的功能\n[AI] 好，我來實作匯出 CSV。",
+    "expected": [
+      {"name": "匯出CSV功能", "keys": ["匯出", "csv"]}
+    ]
+  },
+  {
+    "id": "pure_chat",
+    "desc": "純閒聊（應 0 項，測過度生成/幻覺）",
+    "exchange": "[使用者] 你覺得今天天氣如何\n[AI] 我看不到天氣，但希望你今天順利！",
+    "expected": []
+  },
+  {
+    "id": "mixed_progress",
+    "desc": "完成 + 新增混合",
+    "exchange": "[使用者] 登入功能我做完也測過了。接下來要做註冊。喔註冊的 email 驗證先不做等金流那邊確認。\n[AI] 好，登入完成，開始做註冊。",
+    "expected": [
+      {"name": "做註冊功能", "keys": ["註冊"]},
+      {"name": "email驗證backlog", "keys": ["email", "驗證"]}
+    ]
+  },
+  {
+    "id": "buried_single",
+    "desc": "一個任務藏在大量無關閒聊中（lost in the middle 單點）",
+    "exchange": "[使用者] 欸我跟你說喔今天午餐吃超飽的然後下午有點想睡覺啊對了我突然想到 webhook 那個簽章驗證好像有漏洞要修一下啦然後晚上想去看電影你有推薦的嗎\n[AI] webhook 簽章我記下來，電影我就不推薦了哈。",
+    "expected": [
+      {"name": "修webhook簽章驗證漏洞", "keys": ["webhook", "簽章"]}
+    ]
+  },
+  {
+    "id": "mega_sprint",
+    "desc": "大尺度：一長段 prose 塞 15 個任務（製造 recall 衰減，chunking 主戰場）",
+    "exchange": "[使用者] 好我把這週要弄的一次講完你記一下。登入那邊 OAuth 的 refresh token 過期沒處理會直接登出要修。註冊表單的 email 格式驗證現在是空的要補。購物車數量改成 0 的時候不會移除商品這是 bug。結帳金流我們先串測試環境的 Stripe 之後再換正式。訂單列表分頁載入很慢可能要加 index。商品搜尋要支援中文斷詞這個比較大之後再做。後台權限管理還沒做先 hardcode 一個 admin 帳號頂著。圖片上傳沒有壓縮會吃爆流量要加。email 通知的 template 要重寫現在很醜。我不確定要導入 Elasticsearch 還是先用 DB 的 like 查詢這個等你決定。CI 的 e2e 測試一直 flaky 要查。API 的 rate limiting 還沒加。使用者頭像的 CDN 快取設定錯了圖片不會更新。GDPR 那個資料刪除功能法務要求要做但期限沒定先擱著。最後 log 現在都印 stdout 沒有結構化要改成 JSON log。\n[AI] 好我全部記下來。",
+    "expected": [
+      {"name": "OAuth refresh token過期", "keys": ["refreshtoken", "oauth"]},
+      {"name": "email格式驗證", "keys": ["格式驗證", "email格式"]},
+      {"name": "購物車數量0不移除bug", "keys": ["購物車", "數量"]},
+      {"name": "Stripe測試環境workaround", "keys": ["stripe"]},
+      {"name": "訂單分頁慢加index", "keys": ["分頁", "index"]},
+      {"name": "中文斷詞搜尋backlog", "keys": ["斷詞"]},
+      {"name": "後台權限hardcode admin", "keys": ["admin", "權限管理"]},
+      {"name": "圖片上傳壓縮", "keys": ["壓縮"]},
+      {"name": "email template重寫", "keys": ["template"]},
+      {"name": "Elasticsearch或DB決策", "keys": ["elasticsearch"]},
+      {"name": "CI e2e flaky", "keys": ["flaky"]},
+      {"name": "API rate limiting", "keys": ["ratelimiting", "rate"]},
+      {"name": "頭像CDN快取錯", "keys": ["cdn"]},
+      {"name": "GDPR資料刪除backlog", "keys": ["gdpr"]},
+      {"name": "log結構化JSON", "keys": ["jsonlog", "結構化", "log"]}
+    ]
+  }
+]
