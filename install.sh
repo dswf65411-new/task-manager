@@ -42,8 +42,9 @@ else
   echo "⚠️  env 沒有 DEEPSEEK_API_KEY！請在你啟動 claude 的 shell 設定（例 ~/.zshrc 加 export DEEPSEEK_API_KEY=\"sk-...\"），重開終端再啟動 claude。"
 fi
 
-# 5) 煙霧測試
+# 5) 煙霧測試（用空 transcript 驗不崩；測完自清，不留空資料夾）
 echo '{"transcript_path":"/dev/null","session_id":"install-smoke"}' | python3 "$DIR/tracker.py" 2>/dev/null && echo "✅ 煙霧測試通過（空輸入不崩）"
+rm -rf "$HOME/task-manager/session-install-smoke" 2>/dev/null
 
 echo
 echo "🎉 安裝完成。重開 claude session 後，每輪對話會自動寫入 ~/task-manager/<session名>-<id>/"
