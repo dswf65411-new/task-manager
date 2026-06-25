@@ -477,6 +477,12 @@ def call_deepseek(user_msg):
         ],
         "messages": [{"role": "user", "content": user_msg}],
     }
+    # 純 non-think：抽取/分類屬短輸出判斷任務，thinking 邊際效益低(+1~3%，arXiv 2603.19558)，
+    # 卻讓 token 暴增 10~100×、latency 翻數倍、大輸入還會 timeout 失敗。一律關 thinking，全程快又便宜。
+    # （deferral 等隱性案的微小漏抓改由 deterministic 候選掃描補，不靠昂貴 thinking。）
+    # 要強制開回 thinking 設 TM_NO_THINK=0。關 thinking 時不可同時帶 effort（會 400）。
+    if os.environ.get("TM_NO_THINK", "1") != "0":
+        body["thinking"] = {"type": "disabled"}
     req = urllib.request.Request(
         DS_ENDPOINT,
         data=json.dumps(body).encode("utf-8"),
@@ -549,6 +555,23 @@ def resolve_taskdir(sid, title):
     return base / folder
 
 
+def multi_perspective_ops(exchange, active_index=""):
+    """第一趟 multi-perspective：通用 lens + 清理 lens 平行 union（hook 與回填 skill 共用）。
+    回 (ops, need_detail, usage)。"""
+    with cf.ThreadPoolExecutor(max_workers=2) as pool:
+        f_gen = pool.submit(ask_ops, build_pass1_user(active_index, exchange))
+        f_cln = pool.submit(ask_ops, build_cleanup_lens_user(exchange))
+        obj, usage = f_gen.result()
+        obj_cln, _ucln = f_cln.result()
+    ops = obj.get("ops", []) if isinstance(obj, dict) else []
+    need = [i for i in (obj.get("need_detail", []) if isinstance(obj, dict) else []) if isinstance(i, str)]
+    _n = {norm_title(o.get("title", "")) for o in ops if o.get("action") == "add"}
+    for op in (obj_cln.get("ops", []) if isinstance(obj_cln, dict) else []):
+        if op.get("action") == "add" and op.get("title") and not is_dup_title(op["title"], _n):
+            ops.append(op); _n.add(norm_title(op["title"]))
+    return ops, need, usage
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # 主流程
 # ──────────────────────────────────────────────────────────────────────────
@@ -603,21 +626,8 @@ def main():
 
         active_index = build_index(taskdir)
         t0 = time.time()
-        # 第一趟：multi-perspective——通用 lens + 清理 lens 平行 union（benchmark 證實 98.7%→100%、無額外幻覺）。
-        # 通用 lens 出 ops + need_detail；清理 lens 補通用會系統性漏的「改善/重寫/技術債」類。
-        with cf.ThreadPoolExecutor(max_workers=2) as pool:
-            f_gen = pool.submit(ask_ops, build_pass1_user(active_index, exchange))
-            f_cln = pool.submit(ask_ops, build_cleanup_lens_user(exchange))
-            obj, usage = f_gen.result()
-            obj_cln, _ucln = f_cln.result()
-        ops = obj.get("ops", []) if isinstance(obj, dict) else []
-        need = obj.get("need_detail", []) if isinstance(obj, dict) else []
-        need = [i for i in need if isinstance(i, str)]
-        # union 清理 lens 的 adds（模糊去重，避免和通用 lens 重複）
-        _n = {norm_title(o.get("title", "")) for o in ops if o.get("action") == "add"}
-        for op in (obj_cln.get("ops", []) if isinstance(obj_cln, dict) else []):
-            if op.get("action") == "add" and op.get("title") and not is_dup_title(op["title"], _n):
-                ops.append(op); _n.add(norm_title(op["title"]))
+        # 第一趟：multi-perspective（通用 lens + 清理 lens 平行 union，benchmark 證實 98.7%→100%）
+        ops, need, usage = multi_perspective_ops(exchange, active_index)
 
         # 第二趟（按需）：只把要改內容的那 1–2 條完整 detail 餵回去 → 拿改寫 ops
         usage2 = None

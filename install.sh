@@ -35,13 +35,16 @@ else:
     print("✅ Stop hook 已存在（略過）")
 PY
 
-# 3.5) 安裝隨附的查看 skill task-manager-check（若 repo 帶了 skill/）
-if [ -f "$DIR/skill/SKILL.md" ]; then
-  SKILL_DST="$HOME/.claude/skills/task-manager-check"
-  mkdir -p "$SKILL_DST"
-  cp "$DIR/skill/SKILL.md" "$DIR/skill/show.py" "$SKILL_DST/"
-  chmod +x "$SKILL_DST/show.py"
-  echo "✅ 查看 skill task-manager-check 已安裝（用 /task-manager-check 看本 session 任務）"
+# 3.5) 安裝隨附的 skills（若 repo 帶了 skills/）：task-manager-check（查看）、build-tasks-from-history（回填）
+if [ -d "$DIR/skills" ]; then
+  for sd in "$DIR/skills"/*/; do
+    name=$(basename "$sd")
+    dst="$HOME/.claude/skills/$name"
+    mkdir -p "$dst"
+    cp "$sd"*.md "$sd"*.py "$dst/" 2>/dev/null
+    find "$dst" -name '*.py' -exec chmod +x {} \; 2>/dev/null
+    echo "✅ skill $name 已安裝"
+  done
 fi
 
 # 4) API key 檢查（只看 env；hook 為 Claude Code 子程序會繼承）
