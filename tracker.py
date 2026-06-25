@@ -379,12 +379,36 @@ def render_board(taskdir):
     (taskdir / "BOARD.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+# deterministic 候選掃描（#5）：regex 抓含「任務/待辦/擱置/妥協」訊號詞的句子，當提示注入，
+# 逼模型逐句確認不漏（尤其 non-think 對 deferral 等隱性案的微小漏抓）。只提示、不逼建，故不增幻覺。
+_SIGNAL_RE = re.compile(
+    r"(待辦|之後再|之後要|改天|先擱|擱置|還沒|尚未|未做|沒做|沒處理|沒寫|要做|要修|要改|要加|要補|要寫|"
+    r"應該要|需要|得做|TODO|FIXME|先跳過|先用|先以|暫時|暫且|稍後|有空再|記得要|別忘|等.{0,8}再|先.{0,6}頂)"
+)
+
+
+def signal_sentences(exchange):
+    sents = re.split(r"(?<=[。！？!?\n；;])", exchange)
+    out = []
+    for s in sents:
+        s = s.strip()
+        if len(s) > 4 and _SIGNAL_RE.search(s):
+            out.append(s)
+    return out
+
+
 def build_pass1_user(active_index, exchange):
+    hint = ""
+    sig = signal_sentences(exchange)
+    if sig:
+        hint = ("\n\n## ⚠️ 下列句子含任務訊號詞，請逐句確認有沒有對應的 task，漏的補上"
+                "（純訊號但其實不是任務就略過，不要硬建）：\n" + "\n".join(f"- {s}" for s in sig[:20]))
     return (
         "## 目前 active 項目索引（只有 id/tag/title）\n"
         f"{active_index}\n\n"
         "## 最新一輪對話\n"
-        f"{exchange}\n\n"
+        f"{exchange}"
+        f"{hint}\n\n"
         "請依規則輸出第一趟 JSON：{\"ops\":[...], \"need_detail\":[...]}。"
     )
 
@@ -403,22 +427,35 @@ def build_pass2_user(details, exchange):
     )
 
 
+# 去除「不影響語意的修飾/妥協用語」，讓「同一件事換句話說」能對齊。保守：只列明確 filler。
+_FILLER_ANY = ("暫時", "用假的", "用假", "假的", "頂著", "頂替", "將就", "應急", "一下", "順便", "這個", "那個", "目前")
+_FILLER_PREFIX = ("修復", "修正", "處理", "實作", "完成", "新增", "加上", "解決", "先", "暫", "修", "加", "做")
+
+
 def norm_title(t):
-    """正規化標題供模糊去重：去標點/空白、剝除常見動詞前綴。"""
-    t = re.sub(r"[\s，。、,.:：;；!！?？（）()\[\]【】「」]", "", t or "")
-    t = re.sub(r"^(修復|修正|處理|實作|完成|新增|加上|解決|修|加|做)", "", t)
+    """正規化標題供模糊去重：去標點/空白、剝除常見修飾語。"""
+    t = re.sub(r"[\s\W_]+", "", t or "")
+    for w in _FILLER_ANY:
+        t = t.replace(w, "")
+    for w in _FILLER_PREFIX:
+        if t.startswith(w):
+            t = t[len(w):]
+            break
     return t.lower()
 
 
 def is_dup_title(title, found_norms):
-    """換句話說/問題 vs 修它的工作 都算同一件 → 正規化包含或字元 Jaccard≥0.8 即視為重複。"""
+    """換句話說/問題 vs 修它的工作 算同一件。保守去重(recall-first：誤merge丟task比留重複更糟)：
+    完全相等、或(長度≥4才做)包含、或字元 Jaccard≥0.8 才視為重複。短字串只靠相等，避免誤殺。"""
     n = norm_title(title)
     if not n:
         return True
     for f in found_norms:
         if not f:
             continue
-        if n == f or n in f or f in n:
+        if n == f:
+            return True
+        if len(n) >= 4 and len(f) >= 4 and (n in f or f in n):
             return True
         a, b = set(n), set(f)
         if a and b and len(a & b) / len(a | b) >= 0.8:
@@ -477,12 +514,10 @@ def call_deepseek(user_msg):
         ],
         "messages": [{"role": "user", "content": user_msg}],
     }
-    # 純 non-think：抽取/分類屬短輸出判斷任務，thinking 邊際效益低(+1~3%，arXiv 2603.19558)，
-    # 卻讓 token 暴增 10~100×、latency 翻數倍、大輸入還會 timeout 失敗。一律關 thinking，全程快又便宜。
-    # （deferral 等隱性案的微小漏抓改由 deterministic 候選掃描補，不靠昂貴 thinking。）
-    # 要強制開回 thinking 設 TM_NO_THINK=0。關 thinking 時不可同時帶 effort（會 400）。
-    if os.environ.get("TM_NO_THINK", "1") != "0":
-        body["thinking"] = {"type": "disabled"}
+    # 一律 non-think（無條件、無逃生口，杜絕誤開）：抽取/分類屬短輸出判斷任務，
+    # thinking 邊際效益低(+1~3%，arXiv 2603.19558)卻 token 暴增 10~100×、latency 翻數倍、大輸入會 timeout 失敗。
+    # deferral 等隱性案的微小漏抓改由 deterministic 候選掃描補，不靠昂貴 thinking。
+    body["thinking"] = {"type": "disabled"}
     req = urllib.request.Request(
         DS_ENDPOINT,
         data=json.dumps(body).encode("utf-8"),
