@@ -382,41 +382,79 @@ def render_board(taskdir):
 
 # deterministic 候選掃描（#5）：regex 抓含「任務/待辦/擱置/妥協」訊號詞的句子，當提示注入，
 # 逼模型逐句確認不漏（尤其 non-think 對 deferral 等隱性案的微小漏抓）。只提示、不逼建，故不增幻覺。
-# 每個 tag 都鋪大量訊號詞/用語，逼模型逐句確認、追求高 recall（只提示不逼建，故不增幻覺）。
-_SIG_WORDS = [
-    # —— todo（待辦／該做未做）——
+# 每個 tag 都鋪大量訊號詞，中英文皆涵蓋（英文問答/術語也要抓），逼模型逐句確認、追求高 recall。
+_SIG_CJK = [
+    # todo
     "待辦", "要做", "要寫", "要加", "要改", "要修", "要補", "要建", "要實作", "要研究", "要處理",
     "要解決", "要弄", "要測", "要接", "要串", "要整合", "要部署", "要上線", "還沒做", "還沒寫",
-    "還沒實作", "還沒用", "還沒加", "尚未", "未完成", "需要做", "應該要", "得做", "該做", "TODO",
+    "還沒實作", "還沒用", "還沒加", "尚未", "未完成", "需要做", "應該要", "得做", "該做",
     "打算", "接下來", "下一步", "記得做", "別忘", "規劃", "預計", "計劃", "想做", "排一下",
-    # —— in_progress（進行中）——
+    # in_progress
     "正在", "現在在", "目前在", "開始做", "著手", "進行中", "處理中", "在寫", "在改", "在修",
     "在實作", "做到一半", "弄到一半", "開始實作", "我來做", "我來實作",
-    # —— need_verify（待驗證／測／review）——
+    # need_verify
     "待驗證", "待測", "要驗證", "要測試", "待review", "等驗收", "檢查一下", "確認一下",
     "跑測試", "驗一下", "測一下", "待確認", "完成待測", "改完要測", "要review", "驗收",
-    # —— done（完成）——
+    # done
     "完成", "做完", "寫完", "改完", "搞定", "弄好", "處理好", "解決了", "修好", "跑通",
     "通過", "驗證過", "測過", "上線了", "部署好", "已merge", "已合併", "搞定了", "好了沒問題",
-    # —— backlog（現在不做／長期擱置）——
+    # backlog
     "之後再說", "以後再", "暫不", "暫緩", "先擱", "擱置", "之後再做", "等之後", "等有空",
     "長期", "未來", "下一階段", "下個sprint", "先不做", "現在不做", "還不急", "不急著",
-    "等規格", "等確認", "押後", "延後", "backlog", "先放著", "等資源", "等決定再做",
-    # —— question（待使用者決定）——
+    "等規格", "等確認", "押後", "延後", "先放著", "等資源", "等決定再做",
+    # question
     "？", "要不要", "用哪個", "還是", "哪一個", "該用", "選哪", "你覺得", "你決定",
     "等你決定", "待決定", "不確定", "猶豫", "是否要", "該不該", "需要決策", "要選", "你看",
-    # —— workaround（妥協／應急／退版）——
-    "暫時", "先用", "先以", "頂著", "頂替", "將就", "應急", "hardcode", "寫死", "先跳過",
+    # workaround
+    "暫時", "先用", "先以", "頂著", "頂替", "將就", "應急", "寫死", "先跳過",
     "先略過", "退版", "用舊版", "走舊路", "先mock", "臨時", "權宜", "先這樣", "先擋",
-    "hack", "workaround", "暫代", "繞過", "先湊合", "先頂", "假的頂", "先硬幹",
-    # —— issue（失敗／bug／error）——
-    "bug", "error", "exception", "crash", "報錯", "出錯", "壞掉", "失敗", "掛了", "當掉",
-    "噴錯", "跑不動", "不會動", "沒反應", "失效", "timeout", "逾時", "卡住", "卡死", "漏洞",
-    "錯誤", "異常", "有問題", "fail", "測試失敗", "編譯錯誤", "stacktrace", "衝突", "conflict",
-    "OOM", "tokenlimit", "違背", "崩潰", "炸了", "500", "404", "null", "undefined", "拋出",
+    "暫代", "繞過", "先湊合", "先頂", "假的頂", "先硬幹",
+    # issue
+    "報錯", "出錯", "壞掉", "失敗", "掛了", "當掉", "噴錯", "跑不動", "不會動", "沒反應", "失效",
+    "逾時", "卡住", "卡死", "漏洞", "錯誤", "異常", "有問題", "測試失敗", "編譯錯誤", "衝突",
+    "違背", "崩潰", "炸了", "拋出",
 ]
-_SIG_PATTERNS = [r"\?", r"等.{0,8}再", r"先.{0,6}頂", r"要.{0,6}還是", r"用.{0,6}還是"]
-_SIGNAL_RE = re.compile("|".join([re.escape(w) for w in _SIG_WORDS] + _SIG_PATTERNS))
+_SIG_EN = [
+    # todo
+    "todo", "to-do", "to do", "need to", "needs to", "have to", "to implement", "not implemented",
+    "implement", "not done", "still need", "pending", "remaining", "follow up", "follow-up", "next step", "wip",
+    # in_progress
+    "work in progress", "working on", "in progress", "currently", "implementing",
+    # need_verify
+    "to test", "needs test", "needs testing", "needs review", "to review", "review", "verify",
+    "verification", "qa", "to be tested", "pr review",
+    # done
+    "done", "completed", "finished", "fixed", "resolved", "merged", "shipped", "deployed", "passed",
+    "lgtm", "good to go", "closed", "works now",
+    # backlog
+    "backlog", "later", "someday", "future", "defer", "deferred", "postpone", "postponed", "on hold",
+    "next sprint", "next quarter", "eventually", "nice to have", "won't do", "wontfix", "icebox", "parked",
+    # question
+    "which", "should we", "do we", "vs", "either", "decide", "decision", "tbd", "to be decided",
+    "not sure", "unsure", "thoughts", "wdyt", "your call", "up to you", "which one",
+    # workaround
+    "workaround", "work-around", "hack", "hacky", "temporary", "temp", "for now", "hardcode", "hardcoded",
+    "hard-coded", "stub", "stubbed", "mock", "mocked", "fake", "placeholder", "quick fix", "quick-fix",
+    "band-aid", "bandaid", "kludge", "patch", "monkey patch", "monkeypatch", "fallback", "revert",
+    # issue
+    "bug", "error", "exception", "crash", "crashed", "fail", "failed", "failing", "failure", "broken",
+    "doesn't work", "not working", "issue", "problem", "timeout", "timed out", "stack trace", "stacktrace",
+    "traceback", "npe", "null pointer", "segfault", "oom", "out of memory", "regression", "flaky", "panic",
+    "throws", "throwing", "leak", "memory leak", "deadlock", "race condition", "undefined", "null", "nan",
+    "edge case", "corrupt", "hang", "freeze", "stuck", "token limit",
+]
+
+
+def _en_bound(w):
+    # 英文加邊界，避免 substring 誤中(or→for、bug→debug)；用 lookaround 而非 \b，中英混寫(用Redis)也對
+    return r"(?<![A-Za-z])" + re.escape(w) + r"(?![A-Za-z])"
+
+
+_SIG_PATTERNS = [r"\?", r"等.{0,8}再", r"先.{0,6}頂", r"要.{0,6}還是", r"用.{0,6}還是", r"(?<!\d)(?:500|404)(?!\d)"]
+_SIGNAL_RE = re.compile(
+    "|".join([re.escape(w) for w in _SIG_CJK] + [_en_bound(w) for w in _SIG_EN] + _SIG_PATTERNS),
+    re.IGNORECASE,
+)
 
 
 def signal_sentences(exchange):
