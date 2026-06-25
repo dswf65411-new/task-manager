@@ -13,7 +13,7 @@ bash ~/.claude/hooks/task-manager/install.sh
 
 ## 8 個標籤
 - 任務（狀態機）：`todo` → `in_progress` → `need_verify` → `done`
-- 問題（記原因）：`backlog`（為何現在不做）、`question`（待你決定）、`workaround`（妥協/應急）、`issue`（失敗議題）
+- 問題（記原因）：`backlog`（為何現在不做）、`question`（待你決定）、`workaround`（妥協/應急）、`issue`（bug/error/crash/測試失敗/出錯受阻，即使打算稍後修）
 
 每項 per-item JSON：`id / tag / title / detail / created / updated`，時間一律 **+08**。
 
