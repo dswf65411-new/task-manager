@@ -101,6 +101,10 @@ def main():
         print(f"【{it['id']}】[{it['tag']}] {it.get('title','')}")
         print(f"  建立：{it.get('created','')}　更新：{it.get('updated','')}")
         print(f"  內容：{it.get('detail','')}")
+        if it.get("priority_hint"):
+            print(f"  優先：{it['priority_hint']}")
+        if it.get("depends_on"):
+            print(f"  依賴：{', '.join(it['depends_on'])}")
         return
 
     # 過濾
@@ -132,9 +136,15 @@ def main():
             cur = t
             cnt = sum(1 for x in sel if x.get("tag") == t)
             print(f"{LABEL.get(t, t)} ({cnt})")
-        print(f"　{it.get('id','')}  {it.get('title','')}")
-        if show_detail and it.get("detail"):
-            print(f"　　└ {it['detail']}")
+        print(f"　{it.get('id','')}  {it.get('title','')}", end="")
+        if it.get("priority_hint"):
+            print(f" [{it['priority_hint']}]", end="")
+        print()
+        if show_detail:
+            if it.get("detail"):
+                print(f"　　└ {it['detail']}")
+            if it.get("depends_on"):
+                print(f"　　🔗 依賴: {', '.join(it['depends_on'])}")
 
 
 if __name__ == "__main__":
